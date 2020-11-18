@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
 
 namespace HackerNewsDemo.Controllers
 {
@@ -16,13 +17,21 @@ namespace HackerNewsDemo.Controllers
     {
         private readonly INewsService _newsService;
         private IMemoryCache _cache;
+        private readonly IConfiguration _configuration;
+        private int _initialStoryFetchAmount;
+        private int _initialCacheTimeSpanInSeconds;
 
         public NewsController(
             INewsService newsService,
-            IMemoryCache memoryCache)
+            IMemoryCache memoryCache,
+            IConfiguration configuration)
         {
             _newsService = newsService;
             _cache = memoryCache;
+            _configuration = configuration;
+
+            int.TryParse(_configuration.GetSection("HackerNewsInfo:initialStoryFetchAmount").Value, out _initialStoryFetchAmount);
+            int.TryParse(_configuration.GetSection("HackerNewsInfo:initialCacheTimeSpanInSeconds").Value, out _initialCacheTimeSpanInSeconds);
         }
 
         [HttpGet]
@@ -42,18 +51,16 @@ namespace HackerNewsDemo.Controllers
             if (newestStory == cachedNewestStoryID)
             {
                 storiesForClient = ((List<Story>)_cache.Get(CacheKeys.ListOfCompleteStories))
-                    .Where(x => x.title.Contains(textToSearchFor))
+                    .Where(x => x.title.Contains(textToSearchFor, StringComparison.OrdinalIgnoreCase))
                     .Take(numberOfStoriesToReturn)
                     .ToList();
             }
             else
             {
                 storiesForClient = GoAndBuildCache(newestStory)
-                    .Where(x => x.title.Contains(textToSearchFor))
+                    .Where(x => x.title.Contains(textToSearchFor, StringComparison.OrdinalIgnoreCase))
                     .Take(numberOfStoriesToReturn)
                     .ToList();
-                    
-                    //.Where(x=>x.)Contains().GetRange(0, numberOfStoriesToReturn);
             }
 
             return storiesForClient;
@@ -66,12 +73,12 @@ namespace HackerNewsDemo.Controllers
 
             string cachedListOfStoryIDs = _newsService.GetAllStories().Result;
 
-            List<int> listOfStoryIDs = JsonConvert.DeserializeObject<List<int>>(cachedListOfStoryIDs).Take(50).ToList();
+            List<int> listOfStoryIDs = JsonConvert.DeserializeObject<List<int>>(cachedListOfStoryIDs).Take(_initialStoryFetchAmount).ToList();
 
             BuildNewsStories(storiesToReturn, listOfStoryIDs);
 
             var cacheEntryOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromSeconds(60));
+                .SetSlidingExpiration(TimeSpan.FromSeconds(_initialCacheTimeSpanInSeconds));
 
             // Save data in cache.
             _cache.Set(CacheKeys.NewestStoryID, newestStoryID, cacheEntryOptions);
