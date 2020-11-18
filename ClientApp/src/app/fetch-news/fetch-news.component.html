@@ -1,0 +1,41 @@
+<h1 id="tableLabel">List of New Stories</h1>
+
+<p>This component demonstrates fetching data from the server.</p>
+
+<input type="text" [(ngModel)]="SearchText" />
+<br />
+<br />
+<select [(ngModel)]="pageSize">
+  <option value="5">5</option>
+  <option value="10">10</option>
+  <option value="15">15</option>
+  <option value="20">20</option>
+  <option value="50">50</option>
+  <option value="100">100</option>
+</select>
+<br />
+<br />
+<input id="generateNumber"
+       class="btn btn-primary"
+       type="button"
+       (click)="getStoriesClick($event)"
+       value="Get News Stories" />
+<br />
+<br />
+
+
+<p *ngIf="!newsList"><em>Loading...</em></p>
+
+<table class='table table-striped' aria-labelledby="tableLabel" *ngIf="newsList">
+  <thead>
+    <tr>
+      <th>Title</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let story of newsList">
+      <td *ngIf="!story.url">{{ story.title }}</td>
+      <td *ngIf="story.url"><a href="{{ story.url }}" target="_blank">{{ story.title }}</a></td>
+    </tr>
+  </tbody>
+</table>
